@@ -15,9 +15,8 @@ const int MAX_RAND_SEED = 50;
 uniform sampler2DRect PreviousSandDuneBuffer; //Since we cant both read and write to the same gbuffer.  We alternate between two of them 
 uniform vec2 ScreenSize;
 uniform int initialize; // Do we need to initialize the current gbuffer ? 
-uniform bool whichBuffer;
 
-uniform vec2 randSeed[MAX_RAND_SEED];  // Pseudo random number seeds for random number generat.
+uniform float randSeed[MAX_RAND_SEED];
 uniform int randSeedLength; // Number of random seeds.  Should be the same as 
 
 const float eps = 0.1;
@@ -151,13 +150,18 @@ float rand(vec2 seed){
 void main()
 {
 
-	gl_FragData[0] = vec4(0.0);
+	gl_FragColor = vec4(0.0);
 
 
 	if(initialize == 1 ){
 		//INITIALIZE SIMULATION TO RANDOM CONFIGURATION 
 		if ( 50.0 <  gl_FragCoord.x   && gl_FragCoord.x < 350.0  && 100.0 < gl_FragCoord.y &&  gl_FragCoord.y < 350.0){
-			gl_FragData[0] = vec4(20.0,0.0,0.0,0.0);
+			gl_FragColor = vec4(20.0, 0.0, 0.0, 0.0);
+			// gl_FragColor = vec4(rand(vec2(0.2, 0.3)));
+			// gl_FragColor = vec4(rand( vec2(randSeed[1], randSeed[2]) ));
+		}
+		else {
+			gl_FragColor = vec4(rand( vec2(randSeed[0], randSeed[1]) * 20 ), 0.0, 0.0, 0.0);
 		}
 	}	
 	else {
@@ -191,7 +195,7 @@ void main()
 	
 	
 		//CHECK IF THERES A SALTATION EVENT AT THIS SITE.  IF SO, FREE  TO THE Y COMPONENT FOR ACCUMULATION IN THE NEXT PASS
-		if( h >0 && !inShadow && rand(randSeed[0]) < erosionProb ){
+		if( h >0 && !inShadow && rand( vec2(randSeed[0], randSeed[1]) ) < erosionProb ){
 			h -= 1;
 			nSaltationGrainsGoing +=1 ;
 		}
@@ -220,9 +224,9 @@ void main()
 			}			
 			
 			// CHECK UPWIND NEIGHBOR FOR FREE SAND GRAINS
-			for(int i = 0; i < int (min( float(nSaltationGrainsComing) , float(MAX_RAND_SEED) - 1.0) ) ; i += 1 ){		
+			for(int i = 0; i < int (min( float(nSaltationGrainsComing) , float(MAX_RAND_SEED) - 2.0) ) ; i += 1 ){		
 				//EITHER ACCUMULATE THE FREE GRAINS AT THIS LOCATION OR PASS THEM ON 
-				if (rand(randSeed[i + 1]) > P ){
+				if (rand( vec2(randSeed[i+1], randSeed[i+2]) ) > P ){
 					nSaltationGrainsGoing += 1;
 				}
 				else {
@@ -244,21 +248,21 @@ void main()
 			//SAVE RELATIVE LOCATION OF WHERE THE GRAIN IS GOING
 					
 			if (g.x > eps ){
-				gl_FragData[0].z = 1.0;
+				gl_FragColor.z = 1.0;
 			}
 			else if (g.x < -eps ){
-				gl_FragData[0].z = -1.0;
+				gl_FragColor.z = -1.0;
 			}
 			if (g.y > eps ){
-				gl_FragData[0].w = 1.0;
+				gl_FragColor.w = 1.0;
 			}
 			else if (g.y < -eps ){
-				gl_FragData[0].w = -1.0;
+				gl_FragColor.w = -1.0;
 			}
 			
 		}
 
-		gl_FragData[0].x = max(min(float(h),maxHeight),0.0)  ;
-		gl_FragData[0].y =  float(nSaltationGrainsGoing);		
+		gl_FragColor.x = max(min(float(h),maxHeight),0.0);
+		gl_FragColor.y =  float(nSaltationGrainsGoing);
 	}
 }
